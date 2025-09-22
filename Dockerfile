@@ -38,11 +38,15 @@ WORKDIR /home/dockeruser/ws_latex
 USER root
 RUN echo '#!/bin/bash' > /usr/local/bin/compile_article.sh && \
     echo 'if [ $# -eq 0 ]; then' >> /usr/local/bin/compile_article.sh && \
-    echo '    echo "Usage: compile_article.sh <article_directory>"' >> /usr/local/bin/compile_article.sh && \
+    echo '    echo "Usage: compile_article.sh <article_directory> [specific_file]"' >> /usr/local/bin/compile_article.sh && \
     echo '    exit 1' >> /usr/local/bin/compile_article.sh && \
     echo 'fi' >> /usr/local/bin/compile_article.sh && \
     echo 'cd /home/dockeruser/ws_latex' >> /usr/local/bin/compile_article.sh && \
-    echo 'python3 /usr/local/bin/compile_latex.py "$1"' >> /usr/local/bin/compile_article.sh && \
+    echo 'if [ $# -eq 2 ]; then' >> /usr/local/bin/compile_article.sh && \
+    echo '    python3 /usr/local/bin/compile_latex.py "$1" "$2"' >> /usr/local/bin/compile_article.sh && \
+    echo 'else' >> /usr/local/bin/compile_article.sh && \
+    echo '    python3 /usr/local/bin/compile_latex.py "$1"' >> /usr/local/bin/compile_article.sh && \
+    echo 'fi' >> /usr/local/bin/compile_article.sh && \
     chmod +x /usr/local/bin/compile_article.sh
 
 USER dockeruser

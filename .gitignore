@@ -28,7 +28,7 @@ latex.out/
 *.pdf
 
 # VSCode settings (optional, if using VSCode)
-.vscode/
+# .vscode/ necessary for the keybindings and tasks
 
 # Python cache (if any scripts)
 __pycache__/

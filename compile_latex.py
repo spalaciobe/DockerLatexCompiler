@@ -16,8 +16,18 @@ class LaTeXCompiler:
     def __init__(self, base_dir=None):
         self.base_dir = Path(base_dir) if base_dir else Path.cwd()
         
-    def find_main_tex(self, target_dir):
-        """Searches for main.tex file in the specified directory"""
+    def find_main_tex(self, target_dir, specific_file=None):
+        """Searches for main.tex file in the specified directory, or uses specific file if provided"""
+        if specific_file:
+            # Use the specific file if provided
+            tex_path = self.base_dir / target_dir / specific_file
+            if tex_path.exists():
+                return tex_path
+            else:
+                print(f"❌ Error: Specified file '{specific_file}' not found in '{target_dir}'")
+                return None
+        
+        # Original behavior: look for main.tex first
         tex_path = self.base_dir / target_dir / "main.tex"
         if tex_path.exists():
             return tex_path
@@ -33,7 +43,7 @@ class LaTeXCompiler:
     def clean_aux_files(self, tex_file):
         """Cleans auxiliary files from previous compilations"""
         base_name = tex_file.stem
-        aux_extensions = ['.aux', '.log', '.out', '.toc', '.fdb_latexmk', '.fls', '.synctex.gz', '.bbl', '.blg']
+        aux_extensions = ['.aux', '.log', '.out', '.toc', '.fdb_latexmk', '.fls', '.synctex.gz', '.bbl', '.blg', '.nav', '.snm', '.vrb']
         
         for ext in aux_extensions:
             aux_file = tex_file.parent / f"{base_name}{ext}"
@@ -175,6 +185,8 @@ def main():
     parser = argparse.ArgumentParser(description='Automatic LaTeX compiler')
     parser.add_argument('directory', nargs='?', default='.', 
                        help='Directory containing the LaTeX file (default: current directory)')
+    parser.add_argument('specific_file', nargs='?', default=None,
+                       help='Specific .tex file to compile (optional)')
     parser.add_argument('--clean', '-c', action='store_true',
                        help='Clean auxiliary files before compiling')
     parser.add_argument('--no-clean-after', action='store_true',
@@ -187,10 +199,13 @@ def main():
     compiler = LaTeXCompiler()
     
     # Search for LaTeX file
-    tex_file = compiler.find_main_tex(args.directory)
+    tex_file = compiler.find_main_tex(args.directory, args.specific_file)
     
     if not tex_file:
-        print(f"❌ No .tex file found in '{args.directory}'")
+        if args.specific_file:
+            print(f"❌ Specified file '{args.specific_file}' not found in '{args.directory}'")
+        else:
+            print(f"❌ No .tex file found in '{args.directory}'")
         sys.exit(1)
     
     if args.watch:

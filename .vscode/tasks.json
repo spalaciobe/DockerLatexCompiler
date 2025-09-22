@@ -1,0 +1,25 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile LaTeX (Auto-detect)",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/auto_compile.sh",
+            "args": ["${file}"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [],
+            "detail": "Compila automáticamente el proyecto LaTeX detectando la carpeta del archivo .tex actual"
+        }
+    ]
+}
