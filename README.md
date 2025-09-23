@@ -56,16 +56,22 @@ python scripts/compile.py test
 ```
 
 ### VSCode Integration
-The project includes VSCode tasks for easy compilation:
+This project includes preconfigured tasks and a keybinding to compile con un atajo:
 
 1. Open a `.tex` file in VSCode
 2. Press `Ctrl+Shift+B` (or `Cmd+Shift+B` on Mac)
-3. Select "Compile LaTeX (Auto-detect)" to compile the current file
+   - Thanks to `.vscode/keybindings.json`, this directly runs the task "Compile LaTeX (Auto-detect)" when a `.tex` editor is focused (no picker needed)
+3. The output appears in the VSCode Terminal panel
 
-Available tasks:
-- **Compile LaTeX (Auto-detect)**: Compiles the currently open .tex file
-- **Build LaTeX Docker Image**: Builds/rebuilds the Docker image
-- **Compile LaTeX Directory**: Prompts for a directory to compile
+Details:
+- `.vscode/tasks.json` defines:
+  - **Compile LaTeX (Auto-detect)** → `python scripts/auto_compile.py ${file}`
+  - **Build LaTeX Docker Image** → `python scripts/build.py`
+  - **Compile LaTeX Directory** → `python scripts/compile.py ${input:latexDirectory}`
+- `.vscode/keybindings.json` binds `Ctrl+Shift+B` to run "Compile LaTeX (Auto-detect)" only when `resourceExtname == '.tex'`.
+
+Alternative:
+- Command Palette → "Run Build Task" → "Compile LaTeX (Auto-detect)".
 
 ## Configuration
 
