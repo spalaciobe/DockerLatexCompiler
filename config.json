@@ -1,0 +1,5 @@
+{
+    "docker_image_name": "docker_latex_image",
+    "docker_container_name": "docker_latex_container",
+    "docker_network": "host"
+}
