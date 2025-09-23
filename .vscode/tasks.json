@@ -4,8 +4,8 @@
         {
             "label": "Compile LaTeX (Auto-detect)",
             "type": "shell",
-            "command": "${workspaceFolder}/scripts/auto_compile.sh",
-            "args": ["${file}"],
+            "command": "python",
+            "args": ["${workspaceFolder}/scripts/auto_compile.py", "${file}"],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -19,7 +19,52 @@
                 "clear": false
             },
             "problemMatcher": [],
-            "detail": "Compila automáticamente el proyecto LaTeX detectando la carpeta del archivo .tex actual"
+            "detail": "Automatically compiles LaTeX project by detecting the folder of the current .tex file (cross-platform)"
+        },
+        {
+            "label": "Build LaTeX Docker Image",
+            "type": "shell",
+            "command": "python",
+            "args": ["${workspaceFolder}/scripts/build.py"],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [],
+            "detail": "Builds the LaTeX Docker image (cross-platform)"
+        },
+        {
+            "label": "Compile LaTeX Directory",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "${workspaceFolder}/scripts/compile.py",
+                "${input:latexDirectory}"
+            ],
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": [],
+            "detail": "Compiles LaTeX files in a specific directory (cross-platform)"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "latexDirectory",
+            "description": "LaTeX directory to compile (relative to ws_latex/)",
+            "default": "master-thesis",
+            "type": "promptString"
         }
     ]
 }
