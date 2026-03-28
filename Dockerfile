@@ -18,9 +18,10 @@ RUN apk add --no-cache \
 # RUN apk add --no-cache \
 #     <packages>
 
-# Install additional LaTeX packages (keycommand is in latexextra)
+# Install additional LaTeX packages (keycommand is in latexextra, fontawesome5 in fontsextra)
 RUN apk add --no-cache \
-    texmf-dist-latexextra
+    texmf-dist-latexextra \
+    texmf-dist-fontsextra
 
 # Copy the compile script
 COPY compile_latex.py /usr/local/bin/compile_latex.py

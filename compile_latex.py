@@ -71,6 +71,7 @@ class LaTeXCompiler:
                 ['pdflatex', '-interaction=nonstopmode', tex_file.name],
                 capture_output=True,
                 text=True,
+                encoding='latin-1',
                 timeout=60
             )
             
@@ -87,6 +88,7 @@ class LaTeXCompiler:
                     ['bibtex', base_name],
                     capture_output=True,
                     text=True,
+                    encoding='latin-1',
                     timeout=30
                 )
                 
@@ -100,9 +102,10 @@ class LaTeXCompiler:
                     ['pdflatex', '-interaction=nonstopmode', tex_file.name],
                     capture_output=True,
                     text=True,
+                    encoding='latin-1',
                     timeout=60
                 )
-                
+
                 if result2.returncode != 0:
                     print(f"❌ Error in second pdflatex pass")
                     self._show_latex_errors(result2)
@@ -114,13 +117,22 @@ class LaTeXCompiler:
                     ['pdflatex', '-interaction=nonstopmode', tex_file.name],
                     capture_output=True,
                     text=True,
+                    encoding='latin-1',
                     timeout=60
                 )
                 
                 final_result = result3
             else:
-                # If there are no .bib files, use the first pass result
-                final_result = result1
+                # Second pdflatex pass to resolve thebibliography and cross-references
+                print("🔄 Second pass: pdflatex (resolving references)")
+                result2 = subprocess.run(
+                    ['pdflatex', '-interaction=nonstopmode', tex_file.name],
+                    capture_output=True,
+                    text=True,
+                    encoding='latin-1',
+                    timeout=60
+                )
+                final_result = result2
             
             # Check if PDF was generated
             pdf_file = tex_file.with_suffix('.pdf')

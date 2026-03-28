@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tail:*)",
+      "Bash(ls:*)",
+      "Bash(cd:*)",
+      "WebSearch",
+      "Bash(pip install:*)",
+      "Bash(docker run:*)",
+      "Bash(cp:*)",
+      "Bash(python:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Bash(done)"
+    ]
+  }
+}
