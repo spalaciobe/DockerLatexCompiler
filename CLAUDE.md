@@ -12,11 +12,13 @@ python scripts/build.py
 **Compile a specific .tex file** (auto-detects project folder from path):
 ```bash
 python scripts/auto_compile.py ws_latex/master-thesis/main.tex
+python scripts/auto_compile.py /path/to/any/project/main.tex
 ```
 
-**Compile all files in a directory** (directory is relative to `ws_latex/`):
+**Compile all files in a directory** (relative to `ws_latex/` or absolute path):
 ```bash
 python scripts/compile.py master-thesis
+python scripts/compile.py /path/to/any/latex/project
 ```
 
 **Run `auto_compile.py` without arguments** (searches for `.tex` files in the current directory, useful when `cd`'d into a project):
@@ -30,7 +32,7 @@ Three build tasks are pre-configured in `.vscode/tasks.json`:
 
 - **Compile LaTeX (Auto-detect)** (default build, `Ctrl+Shift+B`): runs `auto_compile.py` against the currently open file.
 - **Build LaTeX Docker Image**: runs `build.py`.
-- **Compile LaTeX Directory**: prompts for a directory name (relative to `ws_latex/`) then runs `compile.py`.
+- **Compile LaTeX Directory**: prompts for a directory name (relative to `ws_latex/` or absolute path) then runs `compile.py`.
 
 ## Architecture
 
@@ -38,7 +40,7 @@ This project wraps `pdflatex` in an Alpine-based Docker container so that LaTeX 
 
 **Execution flow:**
 
-1. Host Python scripts (`scripts/*.py`) build a `docker run` command that volume-mounts `ws_latex/` into the container at `/home/dockeruser/ws_latex`.
+1. Host Python scripts (`scripts/*.py`) build a `docker run` command that volume-mounts the project directory into the container. For files inside `ws_latex/`, the entire `ws_latex/` directory is mounted. For external files, only the parent directory is mounted as a subdirectory of `/home/dockeruser/ws_latex/`.
 2. The Docker container's entrypoint (`/usr/local/bin/compile_article.sh`) invokes `compile_latex.py` (copied into the image at build time).
 3. `compile_latex.py` runs inside the container and executes: `pdflatex` → `bibtex` (if `.bib` files exist) → `pdflatex` → `pdflatex`.
 
@@ -48,7 +50,7 @@ This project wraps `pdflatex` in an Alpine-based Docker container so that LaTeX 
 
 **Configuration:** `config.json` controls the Docker image name, container name, and network. All Python scripts load this file at runtime with fallback defaults.
 
-**LaTeX workspace:** All LaTeX projects live under `ws_latex/`. Each subdirectory is an independent project. The scripts detect the project folder from the path segment immediately after `ws_latex/`.
+**LaTeX workspace:** Projects can live under `ws_latex/` or anywhere on the system. For `ws_latex/` projects, the scripts detect the project folder from the path segment immediately after `ws_latex/`. For external projects, the parent directory of the .tex file is mounted into the container.
 
 **LaTeX packages:** The image includes `texmf-dist-latexextra` and `texmf-dist-fontsextra`. To add more Alpine TeX packages, add `apk add --no-cache <package>` to the `Dockerfile` and rebuild.
 

@@ -23,27 +23,27 @@ class CrossPlatformLaTeXCompiler:
         self.project_root = Path(__file__).parent.parent.resolve()
         self.config = self.load_config()
         self.is_windows = platform.system() == "Windows"
-        
+
     def load_config(self):
         """Load Docker configuration from config file"""
         config_file = self.project_root / "config.json"
-        
+
         # Default configuration
         default_config = {
             "docker_image_name": "docker_latex_image",
-            "docker_container_name": "docker_latex_container", 
+            "docker_container_name": "docker_latex_container",
             "docker_network": "host"
         }
-        
+
         if config_file.exists():
             try:
                 with open(config_file, 'r') as f:
                     return {**default_config, **json.load(f)}
             except (json.JSONDecodeError, IOError):
-                print("⚠️  Warning: Could not read config.json, using defaults")
-                
+                print("Warning: Could not read config.json, using defaults")
+
         return default_config
-    
+
     def show_help(self):
         """Display help information"""
         print("Usage: python auto_compile.py [tex_file_path]")
@@ -53,7 +53,7 @@ class CrossPlatformLaTeXCompiler:
         print("")
         print("Examples:")
         print("  python auto_compile.py                                    # Search .tex in current directory")
-        print("  python auto_compile.py /path/to/file.tex                # Detect folder from file")
+        print("  python auto_compile.py /path/to/file.tex                # Compile from any location")
         print("  python auto_compile.py ws_latex/master-thesis/main.tex  # Detect folder from file")
 
     def find_tex_files(self, search_dir):
@@ -65,15 +65,15 @@ class CrossPlatformLaTeXCompiler:
         """Select tex file when multiple are found"""
         if len(tex_files) == 1:
             return tex_files[0]
-            
+
         print(f"[INFO] Found {len(tex_files)} .tex files:")
         print("")
-        
+
         for i, file in enumerate(tex_files, 1):
             print(f"  {i}) {file.name}")
-            
+
         print("")
-        
+
         while True:
             try:
                 choice = input(f"Select file to compile (1-{len(tex_files)}): ")
@@ -87,75 +87,103 @@ class CrossPlatformLaTeXCompiler:
                 return tex_files[0]
 
     def detect_project_folder(self, tex_file):
-        """Detect the project folder from tex file path"""
+        """Detect the project folder from tex file path.
+
+        Returns (folder_name, mode) where mode is 'internal' (inside ws_latex)
+        or 'external' (anywhere else on the system).
+        """
         tex_path = Path(tex_file).resolve()
-        
-        # Find ws_latex in the path
+
+        # Try to find ws_latex in the path (internal mode)
         path_parts = tex_path.parts
         try:
             ws_latex_index = path_parts.index("ws_latex")
             if ws_latex_index + 1 < len(path_parts):
-                return path_parts[ws_latex_index + 1]
+                return path_parts[ws_latex_index + 1], "internal"
         except ValueError:
             pass
-            
-        return None
 
-    def get_docker_volume_mount(self):
-        """Get the appropriate Docker volume mount syntax for the current OS"""
-        ws_latex_path = self.project_root / "ws_latex"
-        
-        if self.is_windows:
-            # Windows Docker Desktop format
-            windows_path = str(ws_latex_path).replace("\\", "/")
-            if windows_path[1] == ":":
-                # Convert C:\path to /c/path format for Docker Desktop
-                windows_path = f"/{windows_path[0].lower()}{windows_path[2:]}"
-            return f"{windows_path}:/home/dockeruser/ws_latex"
+        # External mode: use the parent directory name
+        parent = tex_path.parent
+        if parent == tex_path.root or parent.name == "":
+            print("[ERROR] Cannot compile a .tex file at the filesystem root")
+            sys.exit(1)
+
+        return parent.name, "external"
+
+    def _format_docker_path(self, host_path):
+        """Convert a host path to Docker-compatible format"""
+        path_str = str(host_path).replace("\\", "/")
+        if self.is_windows and len(path_str) > 1 and path_str[1] == ":":
+            path_str = f"/{path_str[0].lower()}{path_str[2:]}"
+        return path_str
+
+    def get_docker_volume_mount(self, host_path, container_dir_name=None):
+        """Get the appropriate Docker volume mount syntax.
+
+        Args:
+            host_path: Path on the host to mount
+            container_dir_name: If set, mount as /home/dockeruser/ws_latex/<name>.
+                              If None, mount directly as /home/dockeruser/ws_latex.
+        """
+        docker_path = self._format_docker_path(host_path)
+
+        container_target = "/home/dockeruser/ws_latex"
+        if container_dir_name:
+            container_target = f"/home/dockeruser/ws_latex/{container_dir_name}"
+
+        return f"{docker_path}:{container_target}"
+
+    def compile_project(self, project_folder, tex_file=None, external_host_path=None):
+        """Compile the LaTeX project using Docker.
+
+        Args:
+            project_folder: Name of the project folder (used as Docker arg)
+            tex_file: Optional path to specific .tex file
+            external_host_path: If set, mount this directory instead of ws_latex/
+        """
+        if external_host_path:
+            print(f"[INFO] Compiling external project: {external_host_path}")
+            volume_mount = self.get_docker_volume_mount(external_host_path, project_folder)
         else:
-            # Linux/Mac format
-            return f"{ws_latex_path}:/home/dockeruser/ws_latex"
+            print(f"[INFO] Detected project: {project_folder}")
+            # Verify project folder exists inside ws_latex
+            project_path = self.project_root / "ws_latex" / project_folder
+            if not project_path.exists():
+                print(f"[ERROR] Directory 'ws_latex/{project_folder}' does not exist")
+                print("   Available projects:")
+                ws_latex_path = self.project_root / "ws_latex"
+                if ws_latex_path.exists():
+                    for item in ws_latex_path.iterdir():
+                        if item.is_dir():
+                            print(f"   - {item.name}")
+                return False
+            volume_mount = self.get_docker_volume_mount(self.project_root / "ws_latex")
 
-    def compile_project(self, project_folder, tex_file=None):
-        """Compile the LaTeX project using Docker"""
-        print(f"[INFO] Detected project: {project_folder}")
-        
-        # Verify project folder exists
-        project_path = self.project_root / "ws_latex" / project_folder
-        if not project_path.exists():
-            print(f"[ERROR] Directory 'ws_latex/{project_folder}' does not exist")
-            print("   Available projects:")
-            ws_latex_path = self.project_root / "ws_latex"
-            if ws_latex_path.exists():
-                for item in ws_latex_path.iterdir():
-                    if item.is_dir():
-                        print(f"   - {item.name}")
-            return False
-            
-        print(f"[COMPILE] LaTeX in ws_latex/{project_folder}/")
-        
+        print(f"[COMPILE] LaTeX in {project_folder}/")
+
         # Build Docker command
         cmd = [
             "docker", "run", "--rm",
-            "--volume", self.get_docker_volume_mount(),
+            "--volume", volume_mount,
             "--dns=8.8.8.8"
         ]
-        
+
         # Add network configuration (not supported on Windows Docker Desktop with host network)
         if not self.is_windows and self.config["docker_network"] != "host":
             cmd.extend(["--network", self.config["docker_network"]])
         elif not self.is_windows:
             cmd.extend(["--network", "host"])
-            
+
         cmd.append(self.config["docker_image_name"])
         cmd.append(project_folder)
-        
+
         # Add specific tex file if provided
         if tex_file:
             tex_filename = Path(tex_file).name
             print(f"[FILE] Compiling specific file: {tex_filename}")
             cmd.append(tex_filename)
-            
+
         try:
             print(f"[DOCKER] Running: {' '.join(cmd)}")
             result = subprocess.run(cmd, check=True)
@@ -173,68 +201,70 @@ def main():
     parser = argparse.ArgumentParser(description="Cross-platform LaTeX compiler using Docker")
     parser.add_argument("tex_file", nargs="?", help="Path to .tex file (optional)")
     parser.add_argument("--help-detailed", action="store_true", help="Show detailed help")
-    
+
     args = parser.parse_args()
-    
+
     compiler = CrossPlatformLaTeXCompiler()
-    
+
     if args.help_detailed:
         compiler.show_help()
         return
-        
+
     # If tex file is provided as argument
     if args.tex_file:
         tex_file_path = Path(args.tex_file)
-        
+
         # Convert to absolute path if relative
         if not tex_file_path.is_absolute():
             tex_file_path = Path.cwd() / tex_file_path
-            
+
         # Verify file exists
         if not tex_file_path.exists():
             print(f"[ERROR] File '{tex_file_path}' does not exist")
             sys.exit(1)
-            
-        # Verify it's within ws_latex
-        if "ws_latex" not in str(tex_file_path):
-            print("[ERROR] File must be within the ws_latex directory")
-            print(f"   Current file: {tex_file_path}")
-            sys.exit(1)
-            
-        # Detect project folder
-        project_folder = compiler.detect_project_folder(tex_file_path)
-        
+
+        # Detect project folder and mode
+        project_folder, mode = compiler.detect_project_folder(tex_file_path)
+
         if not project_folder:
             print("[ERROR] Could not detect project folder")
             sys.exit(1)
-            
-        success = compiler.compile_project(project_folder, tex_file_path)
-        
+
+        if mode == "internal":
+            success = compiler.compile_project(project_folder, tex_file_path)
+        else:
+            host_dir = tex_file_path.parent.resolve()
+            success = compiler.compile_project(project_folder, tex_file_path, external_host_path=host_dir)
+
     else:
         # Search for tex files in current directory
         current_dir = Path.cwd()
         tex_files = compiler.find_tex_files(current_dir)
-        
+
         if not tex_files:
             print(f"[ERROR] No .tex files found in current directory: {current_dir}")
             print("")
             print("Usage: python auto_compile.py <tex_file_path>")
             print("Or run from a directory containing .tex files")
             sys.exit(1)
-            
+
         # Select tex file if multiple found
         selected_tex = compiler.select_tex_file(tex_files)
         print(f"[FILE] Using file: {selected_tex.name}")
-        
-        # Detect project folder
-        project_folder = compiler.detect_project_folder(selected_tex)
-        
+
+        # Detect project folder and mode
+        project_folder, mode = compiler.detect_project_folder(selected_tex)
+
         if not project_folder:
             print("[ERROR] Could not detect project folder")
             sys.exit(1)
-            
-        success = compiler.compile_project(project_folder, selected_tex)
-    
+
+        if mode == "internal":
+            success = compiler.compile_project(project_folder, selected_tex)
+        else:
+            host_dir = selected_tex.parent.resolve()
+            success = compiler.compile_project(project_folder, selected_tex, external_host_path=host_dir)
+
     sys.exit(0 if success else 1)
 
 if __name__ == "__main__":

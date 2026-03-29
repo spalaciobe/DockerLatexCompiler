@@ -62,8 +62,8 @@
     "inputs": [
         {
             "id": "latexDirectory",
-            "description": "LaTeX directory to compile (relative to ws_latex/)",
-            "default": "master-thesis",
+            "description": "Directory name (relative to ws_latex/) or absolute path",
+            "default": "",
             "type": "promptString"
         }
     ]
