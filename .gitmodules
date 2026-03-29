@@ -1,0 +1,3 @@
+[submodule "ws_latex"]
+	path = ws_latex
+	url = https://github.com/spalaciobe/ws_latex.git
